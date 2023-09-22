@@ -220,7 +220,7 @@ module s_axil_register # (
     assign ar_hs   = (ARREADY & ARVALID);
     assign r_hs    = (RREADY & RVALID);
     assign ARREADY = (r_state == ST_R_IDLE);
-    assign RVALID  = (r_state == ST_R_DATA);
+    assign RVALID  = (r_state == ST_R_DONE);
     assign RRESP   = 2'b00;
     assign RDATA   = r_reg;
 

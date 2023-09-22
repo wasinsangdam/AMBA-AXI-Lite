@@ -37,7 +37,7 @@ module m_axil_register_bfm # (
     output  reg                                 RREADY  
 );
 
-    localparam  NUM_REG     = 16,
+    localparam  NUM_REG     = 16;
 
     //================//
     // Test Scenario  //
@@ -166,7 +166,7 @@ module m_axil_register_bfm # (
                     ARVALID = 1'b0;
                 end
                 begin
-                    @ (posedge ACLK);
+                    repeat (2) @ (posedge ACLK);
                     RREADY  = 1'b1;
                     @ (posedge ACLK);
                     while (RVALID == 1'b0) @ (posedge ACLK);

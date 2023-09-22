@@ -1,8 +1,5 @@
 `timescale 1ns/1ps
 
-`include "s_axil_register.v"
-`include "m_axil_register_bfm.v"
-
 module top;
 
     localparam  AXI_ADDR_WIDTH = 6,
@@ -124,3 +121,5 @@ module top;
         $dumpfile("wave.vcd");
         $dumpvars(0);
     end
+
+endmodule
