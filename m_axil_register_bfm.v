@@ -90,6 +90,8 @@ module m_axil_register_bfm # (
                 data = i/4 + 1;
                 axil_write(addr, data);
                 repeat (1) @ (posedge ACLK);
+                $display("Write Data : %d", data);
+
             end
 
             addr = 'h0;
@@ -98,6 +100,8 @@ module m_axil_register_bfm # (
                 addr = j;
                 axil_read(addr, data);
                 repeat (1) @ (posedge ACLK);
+
+                $display("Read Data : %d", data);
             end
         end
 

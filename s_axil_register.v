@@ -233,7 +233,7 @@ module s_axil_register # (
     always @ (posedge ACLK) begin
         if (ARESET) 
             r_reg <= 'h0;
-        else if (r_hs) begin
+        else if (ar_hs) begin
             case (ar_reg)
                 ADDR_REG_0 : r_reg <= registers[0];
                 ADDR_REG_1 : r_reg <= registers[1];
