@@ -85,12 +85,14 @@ module s_axil_register # (
     //=====================//
     //  Write Address FSM  //
     //=====================//
-    localparam  ST_AW_IDLE = 1'd0,
-                ST_AW_DONE = 1'd1;
+    localparam  ST_AW_IDLE = 2'd0,
+                ST_AW_READ = 2'd1,
+                ST_AW_DONE = 2'd2;
 
-    reg                                 aw_state, aw_next;
+    reg     [1 : 0]                     aw_state, aw_next;
     reg     [S_AXI_ADDR_WIDTH-1 : 0]    aw_reg;
     wire                                aw_hs;
+    reg                                 aw_hs_flag;
 
     always @ (posedge ACLK) begin
         if (ARESET)     aw_state <= ST_AW_IDLE;
@@ -100,10 +102,12 @@ module s_axil_register # (
     always @ (*) begin
         aw_next = aw_state;
         case (aw_state)
-            ST_AW_IDLE : if (AWVALID)   aw_next = ST_AW_DONE;
-                         else           aw_next = ST_AW_IDLE;
-            ST_AW_DONE :                aw_next = ST_AW_IDLE;
-            default    :                aw_next = ST_AW_IDLE;
+            ST_AW_IDLE : if (AWVALID)       aw_next = ST_AW_READ;
+                         else               aw_next = ST_AW_IDLE;
+            ST_AW_READ : if (aw_w_hs_flag)  aw_next = ST_AW_DONE;
+                         else               aw_next = ST_AW_READ;
+            ST_AW_DONE :                    aw_next = ST_AW_IDLE;
+            default    :                    aw_next = ST_AW_IDLE;
         endcase
     end
 
@@ -112,7 +116,13 @@ module s_axil_register # (
 
     always @ (posedge ACLK) begin
         if      (ARESET)    aw_reg <= 'h0;
-        else if (aw_hs)     aw_reg <= AWADDR;
+        else if (AWVALID)   aw_reg <= AWADDR;
+    end
+
+    always @ (posedge ACLK) begin
+        if      (ARESET)                    aw_hs_flag = 1'b0;
+        else if (aw_hs)                     aw_hs_flag = 1'b1;
+        else if (aw_state == ST_AW_DONE)    aw_hs_flag = 1'b0;
     end
 
     //==================//
@@ -120,11 +130,17 @@ module s_axil_register # (
     //==================//
     localparam  ST_W_IDLE = 2'd0,
                 ST_W_DATA = 2'd1,
-                ST_W_DONE = 2'd2;
+                ST_W_RESP = 2'd2,
+                ST_W_DONE = 2'd3;
 
     reg     [1 : 0]                     w_state, w_next;
+    reg     [S_AXI_DATA_WIDTH-1 : 0]    w_reg;
+    reg     [3 : 0]                     w_strb_reg;
     wire    [S_AXI_DATA_WIDTH-1 : 0]    w_mask;
+    reg     [S_AXI_DATA_WIDTH-1 : 0]    w_mask_reg;
     wire                                w_hs;
+    reg                                 w_hs_flag;
+    wire                                aw_w_hs_flag;
 
 
     always @ (posedge ACLK) begin
@@ -135,49 +151,76 @@ module s_axil_register # (
     always @ (*) begin
         w_next = w_state;
         case (w_state)
-            ST_W_IDLE : if (WVALID)     w_next = ST_W_DATA;
-                        else            w_next = ST_W_IDLE;
-            ST_W_DATA : if (BREADY)     w_next = ST_W_DONE;
-                        else            w_next = ST_W_DATA;
-            ST_W_DONE :                 w_next = ST_W_IDLE;
-            default   :                 w_next = ST_W_IDLE;
+            ST_W_IDLE : if (WVALID)         w_next = ST_W_DATA;
+                        else                w_next = ST_W_IDLE;
+            ST_W_DATA : if (aw_w_hs_flag)   w_next = ST_W_RESP;
+                        else                w_next = ST_W_DATA;
+            ST_W_RESP : if (BREADY)         w_next = ST_W_DONE;
+                        else                w_next = ST_W_RESP;
+            ST_W_DONE :                     w_next = ST_W_IDLE;
+            default   :                     w_next = ST_W_IDLE;
         endcase
     end
 
     assign w_hs   = (WVALID & WREADY);
-    assign w_mask = { {8{WSTRB[3]}}, {8{WSTRB[2]}}, {8{WSTRB[1]}}, {8{WSTRB[0]}} };
     assign WREADY = (w_state == ST_W_IDLE);
-    assign BVALID = (w_state == ST_W_DATA);
+    assign BVALID = (w_state == ST_W_DONE);
     assign BRESP  = 2'b00;
+    assign w_mask  = { {8{WSTRB[3]}}, {8{WSTRB[2]}}, {8{WSTRB[1]}}, {8{WSTRB[0]}} };
+    assign aw_w_hs_flag = aw_hs_flag & w_hs_flag; 
 
+    always @ (posedge ACLK) begin
+        if      (ARESET)                w_hs_flag <= 1'b0;
+        else if (w_hs)                  w_hs_flag <= 1'b1;
+        else if (w_state == ST_W_RESP)  w_hs_flag <= 1'b0;
+    end
+
+    // always @ (posedge ACLK) begin
+    //     if      (ARESET)                w_mask_reg <= 'h0;
+    //     else if (WVALID)                w_mask_reg <= w_mask;
+    //     else if (w_state == ST_W_DONE)  w_mask_reg <= 'h0;
+    // end
+
+    // always @ (posedge ACLK) begin
+    //     if      (ARESET)                w_strb_reg <= 'h0;
+    //     else if (WVALID)                w_strb_reg <= WSTRB;
+    //     else if (w_state == ST_R_DONE)  w_strb_reg <= 'h0;
+    // end
 
     integer i;
+
+    always @ (posedge ACLK) begin
+        if      (ARESET)                w_reg <= 'h0;
+        else if (WVALID)                w_reg <= (WDATA & w_mask);
+        else if (w_state == ST_W_DONE)  w_reg <= 'h0;
+    end
 
     always @ (posedge ACLK) begin
         if (ARESET) begin
             for (i = 0; i < 16; i = i + 1) registers[i] <= 'h0;
         end
-        else if (w_hs) begin
+        else if (aw_w_hs_flag) begin
             case (aw_reg)
-                ADDR_REG_0 : registers[0]  <= (WDATA & w_mask) | (registers[0]  & ~w_mask); 
-                ADDR_REG_1 : registers[1]  <= (WDATA & w_mask) | (registers[1]  & ~w_mask); 
-                ADDR_REG_2 : registers[2]  <= (WDATA & w_mask) | (registers[2]  & ~w_mask); 
-                ADDR_REG_3 : registers[3]  <= (WDATA & w_mask) | (registers[3]  & ~w_mask); 
-                ADDR_REG_4 : registers[4]  <= (WDATA & w_mask) | (registers[4]  & ~w_mask); 
-                ADDR_REG_5 : registers[5]  <= (WDATA & w_mask) | (registers[5]  & ~w_mask); 
-                ADDR_REG_6 : registers[6]  <= (WDATA & w_mask) | (registers[6]  & ~w_mask); 
-                ADDR_REG_7 : registers[7]  <= (WDATA & w_mask) | (registers[7]  & ~w_mask); 
-                ADDR_REG_8 : registers[8]  <= (WDATA & w_mask) | (registers[8]  & ~w_mask); 
-                ADDR_REG_9 : registers[9]  <= (WDATA & w_mask) | (registers[9]  & ~w_mask); 
-                ADDR_REG_A : registers[10] <= (WDATA & w_mask) | (registers[10] & ~w_mask); 
-                ADDR_REG_B : registers[11] <= (WDATA & w_mask) | (registers[11] & ~w_mask); 
-                ADDR_REG_C : registers[12] <= (WDATA & w_mask) | (registers[12] & ~w_mask); 
-                ADDR_REG_D : registers[13] <= (WDATA & w_mask) | (registers[13] & ~w_mask); 
-                ADDR_REG_E : registers[14] <= (WDATA & w_mask) | (registers[14] & ~w_mask); 
-                ADDR_REG_F : registers[15] <= (WDATA & w_mask) | (registers[15] & ~w_mask);  
+                ADDR_REG_0 : registers[0]  <= w_reg | (registers[0]  & ~w_mask);
+                ADDR_REG_1 : registers[1]  <= w_reg | (registers[1]  & ~w_mask);
+                ADDR_REG_2 : registers[2]  <= w_reg | (registers[2]  & ~w_mask);
+                ADDR_REG_3 : registers[3]  <= w_reg | (registers[3]  & ~w_mask);
+                ADDR_REG_4 : registers[4]  <= w_reg | (registers[4]  & ~w_mask);
+                ADDR_REG_5 : registers[5]  <= w_reg | (registers[5]  & ~w_mask);
+                ADDR_REG_6 : registers[6]  <= w_reg | (registers[6]  & ~w_mask);
+                ADDR_REG_7 : registers[7]  <= w_reg | (registers[7]  & ~w_mask);
+                ADDR_REG_8 : registers[8]  <= w_reg | (registers[8]  & ~w_mask);
+                ADDR_REG_9 : registers[9]  <= w_reg | (registers[9]  & ~w_mask);
+                ADDR_REG_A : registers[10] <= w_reg | (registers[10] & ~w_mask);
+                ADDR_REG_B : registers[11] <= w_reg | (registers[11] & ~w_mask);
+                ADDR_REG_C : registers[12] <= w_reg | (registers[12] & ~w_mask);
+                ADDR_REG_D : registers[13] <= w_reg | (registers[13] & ~w_mask);
+                ADDR_REG_E : registers[14] <= w_reg | (registers[14] & ~w_mask);
+                ADDR_REG_F : registers[15] <= w_reg | (registers[15] & ~w_mask);
             endcase
         end
     end
+
 
     //========================================//
     //  Read Transaction Dependencies (Slave) //
@@ -194,11 +237,11 @@ module s_axil_register # (
                 ST_R_DATA = 2'd1,
                 ST_R_DONE = 2'd2;
 
-    reg     [1 : 0]                     r_state, r_next;
-    reg     [S_AXI_ADDR_WIDTH-1 : 0]    ar_reg;
-    wire                                ar_hs;
-    reg     [S_AXI_DATA_WIDTH-1 : 0]    r_reg;
-    wire                                r_hs;
+    reg     [1 : 0]                     r_state, r_next;    // Read FSM states
+    reg     [S_AXI_ADDR_WIDTH-1 : 0]    ar_reg;             // ARADDR Register
+    wire                                ar_hs;              // AR channel handshake
+    reg     [S_AXI_DATA_WIDTH-1 : 0]    r_reg;              // RDATA register
+    wire                                r_hs;               // R channel handshake
 
     always @ (posedge ACLK) begin
         if (ARESET)     r_state <= ST_R_IDLE;
@@ -226,14 +269,14 @@ module s_axil_register # (
 
     always @ (posedge ACLK) begin
         if      (ARESET)    ar_reg <= 'h0;
-        else if (ar_hs)     ar_reg <= ARADDR;
+        else if (ARVALID)   ar_reg <= ARADDR;
     end
 
 
     always @ (posedge ACLK) begin
         if (ARESET) 
             r_reg <= 'h0;
-        else if (ar_hs) begin
+        else begin
             case (ar_reg)
                 ADDR_REG_0 : r_reg <= registers[0];
                 ADDR_REG_1 : r_reg <= registers[1];
@@ -266,6 +309,7 @@ module s_axil_register # (
     always @ (*) begin
         case (aw_state)
             ST_AW_IDLE : AW_STATE = "AW_IDLE";
+            ST_AW_READ : AW_STATE = "AW_READ";
             ST_AW_DONE : AW_STATE = "AW_DONE";
             default    : AW_STATE = "XX_XXXX";
         endcase
@@ -276,6 +320,7 @@ module s_axil_register # (
         case (w_state)
             ST_W_IDLE : W_STATE = "WR_IDLE";
             ST_W_DATA : W_STATE = "WR_DATA";
+            ST_W_RESP : W_STATE = "WR_RESP";
             ST_W_DONE : W_STATE = "WR_DONE";
             default   : W_STATE = "XX_XXXX";
         endcase
@@ -291,27 +336,27 @@ module s_axil_register # (
         endcase
     end
 
-    reg     [S_AXI_DATA_WIDTH : 0]  reg_0, reg_1, reg_2, reg_3, 
-                                    reg_4, reg_5, reg_6, reg_7,
-                                    reg_8, reg_9, reg_A, reg_B, 
-                                    reg_C, reg_D, reg_E, reg_F;
+    reg     [S_AXI_DATA_WIDTH : 0]  reg_0_00, reg_1_04, reg_2_08, reg_3_0C, 
+                                    reg_4_10, reg_5_14, reg_6_18, reg_7_1C,
+                                    reg_8_20, reg_9_24, reg_A_28, reg_B_2C, 
+                                    reg_C_30, reg_D_34, reg_E_38, reg_F_3C;
     always @ (*) begin
-        reg_0 = registers[0];
-        reg_1 = registers[1];
-        reg_2 = registers[2];
-        reg_3 = registers[3];
-        reg_4 = registers[4];
-        reg_5 = registers[5];
-        reg_6 = registers[6];
-        reg_7 = registers[7];
-        reg_8 = registers[8];
-        reg_9 = registers[9];
-        reg_A = registers[10];
-        reg_B = registers[11];
-        reg_C = registers[12];
-        reg_D = registers[13];
-        reg_E = registers[14];
-        reg_F = registers[15];
+        reg_0_00 = registers[0];
+        reg_1_04 = registers[1];
+        reg_2_08 = registers[2];
+        reg_3_0C = registers[3];
+        reg_4_10 = registers[4];
+        reg_5_14 = registers[5];
+        reg_6_18 = registers[6];
+        reg_7_1C = registers[7];
+        reg_8_20 = registers[8];
+        reg_9_24 = registers[9];
+        reg_A_28 = registers[10];
+        reg_B_2C = registers[11];
+        reg_C_30 = registers[12];
+        reg_D_34 = registers[13];
+        reg_E_38 = registers[14];
+        reg_F_3C = registers[15];
     end
 
     // synthesis translate_on
