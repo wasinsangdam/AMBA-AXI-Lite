@@ -107,6 +107,7 @@ module s_axil_register # (
             ST_AW_IDLE : if (AWVALID)       aw_next = ST_AW_PREP;
                          else               aw_next = ST_AW_IDLE;
             ST_AW_PREP : if (aw_w_hs_flag)  aw_next = ST_AW_DONE;
+                         else               aw_next = ST_AW_PREP;
             ST_AW_DONE :                    aw_next = ST_AW_IDLE;
             default    :                    aw_next = ST_AW_IDLE;
         endcase
@@ -184,7 +185,6 @@ module s_axil_register # (
     always @ (posedge ACLK) begin
         if      (ARESET)    w_reg <= 'h0;
         else if (w_hs)      w_reg <= (WDATA & w_mask);
-        // else if (w_state == ST_W_DONE)  w_reg <= 'h0;
     end
 
     always @ (posedge ACLK) begin
