@@ -118,7 +118,8 @@ module m_axil_register_bfm # (
             wr_data = 'h0;
             for (i = 0; i < nwords * 4; i = i + 4) begin
                 wr_addr = i;
-                wr_data = i/4 + 1;
+                // wr_data = i/4 + 1;
+                wr_data = $urandom % 20;
                 axil_write(wr_addr, wr_data);
                 repeat (1) @ (posedge ACLK);
                 $display("Write Data : %d", wr_data);
