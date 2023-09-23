@@ -67,6 +67,9 @@ module m_axil_register_bfm # (
 
     reg         done = 1'b0;
 
+    integer     random_seed;
+
+
     initial begin
         AWADDR      = 'h0;
         AWVALID     = 'h0;
@@ -109,11 +112,7 @@ module m_axil_register_bfm # (
 
             
             
-        //     // /* Generate random value for */
-        //     // for (i = 0; i < nwords * 4; i = i + 4) begin
-                
-        //     // end
-        // end
+       
 
         begin
             wr_data = 'h0;
@@ -155,63 +154,70 @@ module m_axil_register_bfm # (
         integer                             random_C_W;
         integer                             random_C_B;
 
+
         begin
+            
+            // random_seed = 1;
 
             /* Generate random value for AW and W */
             // 0 : AW and W at the same time
             // 1 : AW after W
             // 2 : W after AW
             // integer random_AW_W;
-            random_AW_W = $urandom % 3;
+            // random_AW_W = $urandom(random_seed) % 3;
 
             /* Generate random value for BVALID and BREADY */
             // 0 : wait for BVALID before asserting BREADY
             // 1 : assert BREADY before BVALID is asserted
-            random_B = $urandom % 2;
+            // random_B = $urandom(random_seed) % 2;
 
             /* Generate random value for AWVALID cycle */
             // range : 1 ~ 5 cycle(s)
-            random_C_AW = ($urandom % 5) + 1;
+            random_C_AW = ($urandom(random_seed) % 30) + 1;
 
             /* Generate random value for WVALID cycle */
             // range : 1 ~ 5 cycle(s)
-            random_C_W = ($urandom % 5) + 1;
+            random_C_W = ($urandom(random_seed) % 30) + 1;
 
             /* Generate random value for BREADY cycle */
             // range : 1 ~ 5 cycle(s)
-            random_C_B = ($urandom % 5) + 1;
+            random_C_B = ($urandom(random_seed) % 30) + 1;
 
             fork
+                /* AW Channel */
                 begin
-                    AWADDR  = wr_addr;
-                    repeat (random_C_AW) @ (posedge ACLK);
-                    AWVALID = 1'b1;
+                    AWADDR  = wr_addr;                      // Set AWADDR
+                    AWVALID = 1'b0;                         // Set AWVALID zero
+                    repeat (random_C_AW) @ (posedge ACLK);  // After random cycle(s)
+                    AWVALID = 1'b1;                         // Assert AWVALID
                     
-                    wait (AWREADY & AWVALID);
-                    @ (posedge ACLK);
-                    AWVALID = 1'b0;
+                    wait (AWREADY & AWVALID);               // Wait AW channel handshake
+                    @ (posedge ACLK);                       // After one cycle
+                    AWVALID = 1'b0;                         // Set AWVALID zero
                 end
+
+                /* W Channel */
                 begin
-                    WDATA   = wr_data;
-                    WSTRB   = 4'b1111;
-                    repeat (random_C_W) @ (posedge ACLK);
-                    WVALID  = 1'b1;
+                    WDATA   = wr_data;                      // Set WDATA
+                    WSTRB   = 4'b1111;                      // Set STRB
+                    WVALID  = 1'b0;                         // Set WVALID zero
+                    repeat (random_C_W) @ (posedge ACLK);   // After random cycle(s)
+                    WVALID  = 1'b1;                         // Assert WVALID
 
-                    wait (WREADY & WVALID);
-                    @ (posedge ACLK);
-                    WSTRB   = 4'b1111;
-                    WVALID  = 1'b0;
+                    wait (WREADY & WVALID);                 // Wait W channel handshake
+                    @ (posedge ACLK);                       // After one cycle
+                    WSTRB   = 4'b0000;                      // Set WSTRB zero 
+                    WVALID  = 1'b0;                         // Set WVALID zero
 
-
-                    repeat (random_C_B) @ (posedge ACLK);
-                    BREADY = 1'b1;
+                    BREADY = 1'b0;                          // Set BREADY zero
+                    repeat (random_C_B) @ (posedge ACLK);   // After random cycle(s)
+                    BREADY = 1'b1;                          // Assert BREADY
                     
-                    wait (BVALID & BVALID);
-                    @ (posedge ACLK);
-                    BREADY = 1'b0;
+                    wait (BVALID & BVALID);                 // Wait B channel handshake
+                    @ (posedge ACLK);                       // After one cycle
+                    BREADY = 1'b0;                          // Set BREADY zero
                 end 
             join
-            // @ (posedge ACLK);
         end
     endtask
 
@@ -232,18 +238,28 @@ module m_axil_register_bfm # (
 
         // Generate random value for ARVALID cycle
         // range : 1 ~ 10 cycle(s)
+        integer                             random_C_AR;
+        integer                             random_C_R;
 
         // Generate random value for RREADY cycle
         // range : 1 ~ 10 cycle(s)
 
         begin
+            
+            random_C_AR = ($urandom(random_seed) % 30) + 1;
+            random_C_R = ($urandom(random_seed) % 30) + 1;
+
             ARADDR  = addr;                 // Set address
+            ARVALID = 1'b0;
+            repeat (random_C_AR) @ (posedge ACLK);
             ARVALID = 1'b1;                 // Give ARVALID to slave
+
             wait (ARVALID && ARREADY);      // Wait AR channel handshake
             @ (posedge ACLK);               // After 1 cycle
             ARVALID = 1'b0;                 // Turn off ARVALID
             
-            repeat (2) @ (posedge ACLK);
+            BREADY  = 1'b0;
+            repeat (random_C_R) @ (posedge ACLK);
             RREADY  = 1'b1;                 // Give RREADY to slave
             wait (RREADY && RVALID);        // Wait R channel handshake
             @ (posedge ACLK);               // After 1 cycle

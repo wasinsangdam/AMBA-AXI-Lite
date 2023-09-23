@@ -86,26 +86,27 @@ module s_axil_register # (
     //  Write Address FSM  //
     //=====================//
     localparam  ST_AW_IDLE = 2'd0,
-                ST_AW_READ = 2'd1,
+                ST_AW_PREP = 2'd1,
                 ST_AW_DONE = 2'd2;
 
-    reg     [1 : 0]                     aw_state, aw_next;
-    reg     [S_AXI_ADDR_WIDTH-1 : 0]    aw_reg;
-    wire                                aw_hs;
-    reg                                 aw_hs_flag;
+    reg     [1 : 0]                     aw_state, aw_next;  // AW FSM states
+    reg     [S_AXI_ADDR_WIDTH-1 : 0]    aw_reg;             // AW register
+    wire                                aw_hs;              // AW handshake
+    reg                                 aw_hs_flag;         // AW handshake flag
 
+    // AW FSM 
     always @ (posedge ACLK) begin
         if (ARESET)     aw_state <= ST_AW_IDLE;
         else            aw_state <= aw_next;
     end
 
+    // AW FSM Transition
     always @ (*) begin
         aw_next = aw_state;
         case (aw_state)
-            ST_AW_IDLE : if (AWVALID)       aw_next = ST_AW_READ;
+            ST_AW_IDLE : if (AWVALID)       aw_next = ST_AW_PREP;
                          else               aw_next = ST_AW_IDLE;
-            ST_AW_READ : if (aw_w_hs_flag)  aw_next = ST_AW_DONE;
-                         else               aw_next = ST_AW_READ;
+            ST_AW_PREP : if (aw_w_hs_flag)  aw_next = ST_AW_DONE;
             ST_AW_DONE :                    aw_next = ST_AW_IDLE;
             default    :                    aw_next = ST_AW_IDLE;
         endcase
@@ -114,11 +115,13 @@ module s_axil_register # (
     assign aw_hs   = (AWVALID & AWREADY);
     assign AWREADY = (aw_state == ST_AW_IDLE);
 
+    // Catch AWADDR when AWVALID signal asserts
     always @ (posedge ACLK) begin
-        if      (ARESET)    aw_reg <= 'h0;
-        else if (AWVALID)   aw_reg <= AWADDR;
+        if      (ARESET)        aw_reg <= 'h0;
+        else if (aw_hs)         aw_reg <= AWADDR;
     end
 
+    // Store AW Handshake 
     always @ (posedge ACLK) begin
         if      (ARESET)                    aw_hs_flag = 1'b0;
         else if (aw_hs)                     aw_hs_flag = 1'b1;
@@ -129,7 +132,7 @@ module s_axil_register # (
     //  Write Data FSM  //
     //==================//
     localparam  ST_W_IDLE = 2'd0,
-                ST_W_DATA = 2'd1,
+                ST_W_PREP = 2'd1,
                 ST_W_RESP = 2'd2,
                 ST_W_DONE = 2'd3;
 
@@ -151,10 +154,10 @@ module s_axil_register # (
     always @ (*) begin
         w_next = w_state;
         case (w_state)
-            ST_W_IDLE : if (WVALID)         w_next = ST_W_DATA;
+            ST_W_IDLE : if (WVALID)         w_next = ST_W_PREP;
                         else                w_next = ST_W_IDLE;
-            ST_W_DATA : if (aw_w_hs_flag)   w_next = ST_W_RESP;
-                        else                w_next = ST_W_DATA;
+            ST_W_PREP : if (aw_w_hs_flag)   w_next = ST_W_RESP;
+                        else                w_next = ST_W_PREP;
             ST_W_RESP : if (BREADY)         w_next = ST_W_DONE;
                         else                w_next = ST_W_RESP;
             ST_W_DONE :                     w_next = ST_W_IDLE;
@@ -164,7 +167,7 @@ module s_axil_register # (
 
     assign w_hs   = (WVALID & WREADY);
     assign WREADY = (w_state == ST_W_IDLE);
-    assign BVALID = (w_state == ST_W_DONE);
+    assign BVALID = (w_state == ST_W_RESP);
     assign BRESP  = 2'b00;
     assign w_mask  = { {8{WSTRB[3]}}, {8{WSTRB[2]}}, {8{WSTRB[1]}}, {8{WSTRB[0]}} };
     assign aw_w_hs_flag = aw_hs_flag & w_hs_flag; 
@@ -175,24 +178,13 @@ module s_axil_register # (
         else if (w_state == ST_W_RESP)  w_hs_flag <= 1'b0;
     end
 
-    // always @ (posedge ACLK) begin
-    //     if      (ARESET)                w_mask_reg <= 'h0;
-    //     else if (WVALID)                w_mask_reg <= w_mask;
-    //     else if (w_state == ST_W_DONE)  w_mask_reg <= 'h0;
-    // end
-
-    // always @ (posedge ACLK) begin
-    //     if      (ARESET)                w_strb_reg <= 'h0;
-    //     else if (WVALID)                w_strb_reg <= WSTRB;
-    //     else if (w_state == ST_R_DONE)  w_strb_reg <= 'h0;
-    // end
 
     integer i;
 
     always @ (posedge ACLK) begin
-        if      (ARESET)                w_reg <= 'h0;
-        else if (WVALID)                w_reg <= (WDATA & w_mask);
-        else if (w_state == ST_W_DONE)  w_reg <= 'h0;
+        if      (ARESET)    w_reg <= 'h0;
+        else if (w_hs)      w_reg <= (WDATA & w_mask);
+        // else if (w_state == ST_W_DONE)  w_reg <= 'h0;
     end
 
     always @ (posedge ACLK) begin
@@ -234,8 +226,9 @@ module s_axil_register # (
     //  Read FSM  //
     //============//
     localparam  ST_R_IDLE = 2'd0,
-                ST_R_DATA = 2'd1,
-                ST_R_DONE = 2'd2;
+                ST_R_PREP = 2'd1,
+                ST_R_DATA = 2'd2,
+                ST_R_DONE = 2'd3;
 
     reg     [1 : 0]                     r_state, r_next;    // Read FSM states
     reg     [S_AXI_ADDR_WIDTH-1 : 0]    ar_reg;             // ARADDR Register
@@ -269,7 +262,7 @@ module s_axil_register # (
 
     always @ (posedge ACLK) begin
         if      (ARESET)    ar_reg <= 'h0;
-        else if (ARVALID)   ar_reg <= ARADDR;
+        else if (ar_hs)     ar_reg <= ARADDR;
     end
 
 
@@ -309,7 +302,7 @@ module s_axil_register # (
     always @ (*) begin
         case (aw_state)
             ST_AW_IDLE : AW_STATE = "AW_IDLE";
-            ST_AW_READ : AW_STATE = "AW_READ";
+            ST_AW_PREP : AW_STATE = "AW_PREP";
             ST_AW_DONE : AW_STATE = "AW_DONE";
             default    : AW_STATE = "XX_XXXX";
         endcase
@@ -319,7 +312,7 @@ module s_axil_register # (
     always @ (*) begin
         case (w_state)
             ST_W_IDLE : W_STATE = "WR_IDLE";
-            ST_W_DATA : W_STATE = "WR_DATA";
+            ST_W_PREP : W_STATE = "WR_PREP";
             ST_W_RESP : W_STATE = "WR_RESP";
             ST_W_DONE : W_STATE = "WR_DONE";
             default   : W_STATE = "XX_XXXX";
