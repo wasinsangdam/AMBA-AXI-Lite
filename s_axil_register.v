@@ -86,8 +86,9 @@ module s_axil_register # (
     //  Write Address FSM  //
     //=====================//
     localparam  ST_AW_IDLE = 2'd0,      // IDLE    state 
-                ST_AW_PREP = 2'd1,      // Prepare state 
-                ST_AW_DONE = 2'd2;      // Done    state 
+                ST_AW_PREP = 2'd1,      // Prepare state
+                ST_AW_WAIT = 2'd2,      // Wait    state
+                ST_AW_DONE = 2'd3;      // Done    state 
 
     reg     [1 : 0]                     aw_state, aw_next;  // AW FSM states
     reg     [S_AXI_ADDR_WIDTH-1 : 0]    aw_reg;             // AW register
@@ -109,8 +110,9 @@ module s_axil_register # (
         case (aw_state)
             ST_AW_IDLE : if (AWVALID)       aw_next = ST_AW_PREP; 
                          else               aw_next = ST_AW_IDLE;
-            ST_AW_PREP : if (aw_w_hs_flag)  aw_next = ST_AW_DONE;
-                         else               aw_next = ST_AW_PREP;
+            ST_AW_PREP :                    aw_next = ST_AW_WAIT;
+            ST_AW_WAIT : if (aw_w_hs_flag)  aw_next = ST_AW_DONE;
+                         else               aw_next = ST_AW_WAIT;
             ST_AW_DONE :                    aw_next = ST_AW_IDLE;
             default    :                    aw_next = ST_AW_IDLE;
         endcase
@@ -138,32 +140,41 @@ module s_axil_register # (
     //==================//
     //  Write Data FSM  //
     //==================//
-    localparam  ST_W_IDLE = 2'd0,   // IDLE     state
-                ST_W_PREP = 2'd1,   // Prepare  state
-                ST_W_RESP = 2'd2,   // Response state
-                ST_W_DONE = 2'd3;   // Done     state
+    localparam  ST_W_IDLE = 3'd0,   // IDLE     state
+                ST_W_PREP = 3'd1,   // Prepare  state
+                ST_W_WAIT = 3'd2,
+                ST_W_RESP = 3'd3,   // Response state
+                ST_W_DONE = 3'd4;   // Done     state
 
-    reg     [1 : 0]                     w_state, w_next;
-    reg     [S_AXI_DATA_WIDTH-1 : 0]    w_reg;
-    wire    [S_AXI_DATA_WIDTH-1 : 0]    w_mask;
-    reg     [S_AXI_DATA_WIDTH-1 : 0]    w_mask_reg;
-    wire                                w_hs;
-    reg                                 w_hs_flag;
-    wire                                aw_w_hs_flag;
+    reg     [2 : 0]                     w_state, w_next;    // W FSM states
+    reg     [S_AXI_DATA_WIDTH-1 : 0]    w_reg;              // W register
+    wire    [S_AXI_DATA_WIDTH-1 : 0]    w_mask;             // W mask
+    reg     [S_AXI_DATA_WIDTH-1 : 0]    w_mask_reg;         // W mask register
+    wire                                w_hs;               // W handshake
+    reg                                 w_hs_flag;          // W handshake flag
+    
+    wire                                aw_w_hs_flag;       // AW, W handshake flag
 
-
+    /* W FSM */
     always @ (posedge ACLK) begin
         if (ARESET)     w_state <= ST_W_IDLE;
         else            w_state <= w_next;
     end
 
+    /* W FSM Transition */
+    // ST_W_IDLE -> ST_W_PREP : When WVALID asserted
+    // ST_W_PREP -> ST_W_WAIT : No condition
+    // ST_W_WAIT -> ST_W_RESP : When hadnshake occurred on both AW and W channel
+    // ST_W_RESP -> ST_W_DONE : When BREADY asserted
+    // ST_W_DONE -> ST_W_IDLE : No condition
     always @ (*) begin
         w_next = w_state;
         case (w_state)
             ST_W_IDLE : if (WVALID)         w_next = ST_W_PREP;
                         else                w_next = ST_W_IDLE;
-            ST_W_PREP : if (aw_w_hs_flag)   w_next = ST_W_RESP;
-                        else                w_next = ST_W_PREP;
+            ST_W_PREP :                     w_next = ST_W_WAIT;
+            ST_W_WAIT : if (aw_w_hs_flag)   w_next = ST_W_RESP;
+                        else                w_next = ST_W_WAIT;
             ST_W_RESP : if (BREADY)         w_next = ST_W_DONE;
                         else                w_next = ST_W_RESP;
             ST_W_DONE :                     w_next = ST_W_IDLE;
@@ -171,32 +182,42 @@ module s_axil_register # (
         endcase
     end
 
-    assign w_hs   = (WVALID & WREADY);
-    assign WREADY = (w_state == ST_W_IDLE);
-    assign BVALID = (w_state == ST_W_RESP);
-    assign BRESP  = 2'b00;
-    assign w_mask  = { {8{WSTRB[3]}}, {8{WSTRB[2]}}, {8{WSTRB[1]}}, {8{WSTRB[0]}} };
-    assign aw_w_hs_flag = aw_hs_flag & w_hs_flag; 
+    assign w_hs   = (WVALID & WREADY);              // W handshake
+    assign WREADY = (w_state == ST_W_IDLE);         // When state is IDLE, assert WREADY
+    assign BVALID = (w_state == ST_W_RESP);         // When state is RESP, assert BREADY
+    assign BRESP  = 2'b00;                          // Fix BRESP "OKAY"
 
+    assign aw_w_hs_flag = aw_hs_flag & w_hs_flag;   // AW, W handshake flag
+    assign w_mask  = { {8{WSTRB[3]}}, {8{WSTRB[2]}}, {8{WSTRB[1]}}, {8{WSTRB[0]}} };    // Strobe mask
+
+    /* [w_reg] */
+    // When W handshake occurs, WDATA is stored with a mask applied to w_reg 
+    always @ (posedge ACLK) begin
+        if      (ARESET)                w_reg <= 'h0;
+        else if (w_hs)                  w_reg <= (WDATA & w_mask);
+    end
+    
+    /* [w_mask_reg] */
+    // When W handshake occurs, w_mask is stored in w_mask_reg 
+    always @ (posedge ACLK) begin
+        if      (ARESET)                w_mask_reg <= 'h0;
+        else if (w_hs)                  w_mask_reg <= w_mask;
+    end
+    
+    /* [w_hs_flag] */
+    // When W handshake occurs, w_hs_flag = 1
+    // When W state is W_RESP,  w_hs_flag = 0
     always @ (posedge ACLK) begin
         if      (ARESET)                w_hs_flag <= 1'b0;
         else if (w_hs)                  w_hs_flag <= 1'b1;
         else if (w_state == ST_W_RESP)  w_hs_flag <= 1'b0;
     end
 
-    always @ (posedge ACLK) begin
-        if      (ARESET)    w_reg <= 'h0;
-        else if (w_hs)      w_reg <= (WDATA & w_mask);
-    end
-
-    always @ (posedge ACLK) begin
-        if      (ARESET)                w_mask_reg <= 'h0;
-        else if (w_hs)                  w_mask_reg <= w_mask;
-    end
-
-
     integer i;
 
+    /* [registers] */
+    // When AW, W handshake occurs, 
+    // w_reg is stored in registers[i] according to address in aw_reg
     always @ (posedge ACLK) begin
         if (ARESET) begin
             for (i = 0; i < 16; i = i + 1) registers[i] <= 'h0;
@@ -235,10 +256,10 @@ module s_axil_register # (
     //============//
     //  Read FSM  //
     //============//
-    localparam  ST_R_IDLE = 2'd0,
-                ST_R_PREP = 2'd1,
-                ST_R_DATA = 2'd2,
-                ST_R_DONE = 2'd3;
+    localparam  ST_R_IDLE = 2'd0,   // IDLE     state 
+                ST_R_PREP = 2'd1,   // Prepare  state
+                ST_R_DATA = 2'd2,   // Data     state
+                ST_R_DONE = 2'd3;   // Done     state
 
     reg     [1 : 0]                     r_state, r_next;    // Read FSM states
     reg     [S_AXI_ADDR_WIDTH-1 : 0]    ar_reg;             // ARADDR Register
@@ -246,16 +267,22 @@ module s_axil_register # (
     reg     [S_AXI_DATA_WIDTH-1 : 0]    r_reg;              // RDATA register
     wire                                r_hs;               // R channel handshake
 
+    /* R FSM */ 
     always @ (posedge ACLK) begin
         if (ARESET)     r_state <= ST_R_IDLE;
         else            r_state <= r_next;
     end
-
+    /* R FSM Transition */
+    // ST_R_IDLE -> ST_R_PREP : When ARVALID asserted
+    // ST_R_PREP -> ST_R_DATA : No condition
+    // ST_R_DATA -> ST_R_DONE : When RREADY asserted
+    // ST_R_DONE -> ST_R_IDLE : No condition
     always @ (*) begin
         r_next = r_state;
         case (r_state)
-            ST_R_IDLE : if (ARVALID)    r_next = ST_R_DATA;
+            ST_R_IDLE : if (ARVALID)    r_next = ST_R_PREP;
                         else            r_next = ST_R_IDLE;
+            ST_R_PREP :                 r_next = ST_R_DATA;
             ST_R_DATA : if (RREADY)     r_next = ST_R_DONE;
                         else            r_next = ST_R_DATA;
             ST_R_DONE :                 r_next = ST_R_IDLE;
@@ -263,23 +290,26 @@ module s_axil_register # (
         endcase
     end
 
-    assign ar_hs   = (ARREADY & ARVALID);
-    assign r_hs    = (RREADY & RVALID);
-    assign ARREADY = (r_state == ST_R_IDLE);
-    assign RVALID  = (r_state == ST_R_DONE);
-    assign RRESP   = 2'b00;
-    assign RDATA   = r_reg;
+    assign ar_hs   = (ARREADY & ARVALID);       // AR handshake
+    assign r_hs    = (RREADY & RVALID);         // R handshake
+    assign ARREADY = (r_state == ST_R_IDLE);    // When state is IDLE, assert ARREADY
+    assign RVALID  = (r_state == ST_R_DATA);    // When state is DATA, assert RVALID
+    assign RRESP   = 2'b00;                     // Fix RRESP "OKAY"
+    assign RDATA   = r_reg;                     
 
+    /* [ar_reg] */
+    // When AR handshake occurs, ARADDR is stored in ar_reg
     always @ (posedge ACLK) begin
         if      (ARESET)    ar_reg <= 'h0;
         else if (ar_hs)     ar_reg <= ARADDR;
     end
 
-
+    /* [r_reg] */
+    // r_reg is data according to address in ar_reg
     always @ (posedge ACLK) begin
         if (ARESET) 
             r_reg <= 'h0;
-        else if (ar_hs) begin
+        else begin
             case (ar_reg)
                 ADDR_REG_0 : r_reg <= registers[0];
                 ADDR_REG_1 : r_reg <= registers[1];
@@ -306,6 +336,7 @@ module s_axil_register # (
     //===============//
     //  Debug State  //
     //===============//
+    // * To view confortably in waveform
 
     // synthesis translate_off
     reg     [8*7-1 : 0]     AW_STATE;
@@ -313,6 +344,7 @@ module s_axil_register # (
         case (aw_state)
             ST_AW_IDLE : AW_STATE = "AW_IDLE";
             ST_AW_PREP : AW_STATE = "AW_PREP";
+            ST_AW_WAIT : AW_STATE = "AW_WAIT";
             ST_AW_DONE : AW_STATE = "AW_DONE";
             default    : AW_STATE = "XX_XXXX";
         endcase
@@ -323,6 +355,7 @@ module s_axil_register # (
         case (w_state)
             ST_W_IDLE : W_STATE = "WR_IDLE";
             ST_W_PREP : W_STATE = "WR_PREP";
+            ST_W_WAIT : W_STATE = "WR_WAIT";
             ST_W_RESP : W_STATE = "WR_RESP";
             ST_W_DONE : W_STATE = "WR_DONE";
             default   : W_STATE = "XX_XXXX";

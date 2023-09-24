@@ -123,7 +123,7 @@ module m_axil_register_bfm # (
         begin
             // [Option 0] Write after Read in order
             if (option == 0) begin
-                $display("[Write after Read in order]");
+                $display("\n[Write after Read in order]");
                 $display("- Write");
                 for (i = 0; i < nwords * 4; i = i + 4) begin
                     wr_addr = i;
@@ -143,12 +143,12 @@ module m_axil_register_bfm # (
             end
             // [Option 1] Read and Write at the same time
             else if (option == 1) begin
-                $display("[Read and Write at the same time]");
+                $display("\n[Read and Write at the same time]");
                 fork 
                     begin
                         for (i = 0; i < (nwords * 4)/2; i = i + 4) begin
                             wr_addr = i;
-                            wr_data = ($urandom % 100);
+                            wr_data = ($urandom % 10);
                             axil_write(wr_addr, wr_data);
                             @ (posedge ACLK);
                             $display("[INFO] Write address 0x%x, Write Data : %d", wr_addr, wr_data);
@@ -166,11 +166,11 @@ module m_axil_register_bfm # (
             end
             // [Option 2] Write random value at random address, Read in order
             else if (option == 2) begin
-                $display("[Write after Read out of order]");
+                $display("\n[Write after Read out of order]");
                 $display("- Write");
                 for (i = 0; i < nwords * 4; i = i + 4) begin
                     wr_addr = ($urandom % 16) * 4;
-                    wr_data = ($urandom % 100);
+                    wr_data = ($urandom % 10);
                     axil_write(wr_addr, wr_data);
                     @ (posedge ACLK);
                     $display("[INFO] Write address 0x%x, Write Data : %d", wr_addr, wr_data);
@@ -182,7 +182,7 @@ module m_axil_register_bfm # (
                     axil_read(rd_addr, rd_data);
                     @ (posedge ACLK);
                     $display("[INFO] Read  address 0x%x, Read  Data : %d", rd_addr, rd_data);
-            end
+                end
             end
             else begin
                 $display("Invalid option");
@@ -298,7 +298,7 @@ module m_axil_register_bfm # (
             @ (posedge ACLK);                       // After 1 cycle
             ARVALID = 1'b0;                         // Set ARVALID zero
 
-            BREADY  = 1'b0;                         // Set BREADY zero
+            RREADY  = 1'b0;                         // Set RREADY zero
             repeat (random_C_R) @ (posedge ACLK);   // After random cycle(s)
             RREADY  = 1'b1;                         // Assert RREADY 
             wait (RREADY & RVALID);                 // Wait R channel handshake
