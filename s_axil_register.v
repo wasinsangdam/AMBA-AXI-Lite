@@ -103,7 +103,8 @@ module s_axil_register # (
 
     /* AW FSM Transition */
     // ST_AW_IDLE -> ST_AW_PREP : When AWVALID asserted 
-    // ST_AW_PREP -> ST_AW_DONE : When hadnshake occurred on both AW and W channel
+    // ST_AW_PREP -> ST_AW_WAIT : No condition
+    // ST_AW_WAIT -> ST_AW_DONE : When hadnshake occurred on both AW and W channel
     // ST_AW_DONE -> ST_AW_IDLE : No condition
     always @ (*) begin
         aw_next = aw_state;

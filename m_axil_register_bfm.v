@@ -57,14 +57,6 @@ module m_axil_register_bfm # (
     // * It is acceptable to assert READY before detecting the corresponding VALID.
     //   This can result in a more efficient design.
 
-
-    //================//
-    // Test Scenario  //
-    //================//
-    // 1. Write 1 ~ 16 value 
-    // 2. Random interval
-    // 3. 
-
     reg         done = 1'b0;
 
     initial begin

@@ -1,20 +1,20 @@
 [*]
 [*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
-[*] Sun Sep 24 09:29:01 2023
+[*] Sun Sep 24 10:40:45 2023
 [*]
 [dumpfile] "/home/seungjae/AMBA-AXI-Lite/wave.vcd"
-[dumpfile_mtime] "Sun Sep 24 09:09:55 2023"
+[dumpfile_mtime] "Sun Sep 24 09:30:21 2023"
 [dumpfile_size] 91170
 [savefile] "/home/seungjae/AMBA-AXI-Lite/waveform.gtkw"
-[timestart] 0
-[size] 1908 999
-[pos] -1 -1
-*-21.696198 6565000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[timestart] 215800
+[size] 1668 969
+[pos] 1919 -1
+*-14.696198 290400 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [sst_width] 214
 [signals_width] 295
 [sst_expanded] 1
-[sst_vpaned_height] 292
+[sst_vpaned_height] 282
 @28
 top.u_slave.ACLK
 top.u_slave.ARESET
