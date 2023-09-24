@@ -1,0 +1,104 @@
+[*]
+[*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
+[*] Sat Sep 23 09:13:52 2023
+[*]
+[dumpfile] "/home/seungjae/AMBA-AXI-Lite/wave.vcd"
+[dumpfile_mtime] "Sat Sep 23 09:12:16 2023"
+[dumpfile_size] 54724
+[savefile] "/home/seungjae/AMBA-AXI-Lite/save2.gtkw"
+[timestart] 0
+[size] 2548 1495
+[pos] -1 -1
+*-20.699430 12565000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] top.
+[sst_width] 214
+[signals_width] 358
+[sst_expanded] 1
+[sst_vpaned_height] 467
+@28
+top.u_slave.ACLK
+top.u_slave.ARESET
+@200
+-
+@820
+top.u_slave.AW_STATE[55:0]
+@22
+top.u_slave.AWADDR[5:0]
+top.u_slave.aw_reg[5:0]
+@28
+[color] 3
+top.u_slave.AWVALID
+top.u_slave.AWREADY
+top.u_slave.aw_hs
+top.u_slave.aw_hs_flag
+@200
+-
+@820
+top.u_slave.W_STATE[55:0]
+@24
+top.u_slave.WDATA[31:0]
+top.u_slave.w_reg[31:0]
+@28
+top.u_slave.WVALID
+top.u_slave.WREADY
+top.u_slave.w_hs
+top.u_slave.w_hs_flag
+@22
+top.u_slave.WSTRB[3:0]
+@200
+-
+@28
+[color] 7
+top.u_slave.aw_w_hs_flag
+@200
+-
+@28
+top.u_slave.BRESP[1:0]
+top.u_slave.BREADY
+top.u_slave.BVALID
+@200
+-
+@22
+top.u_slave.reg_0_00[32:0]
+top.u_slave.reg_1_04[32:0]
+top.u_slave.reg_2_08[32:0]
+top.u_slave.reg_3_0C[32:0]
+top.u_slave.reg_4_10[32:0]
+top.u_slave.reg_5_14[32:0]
+top.u_slave.reg_6_18[32:0]
+top.u_slave.reg_7_1C[32:0]
+top.u_slave.reg_8_20[32:0]
+top.u_slave.reg_9_24[32:0]
+top.u_slave.reg_A_28[32:0]
+top.u_slave.reg_B_2C[32:0]
+top.u_slave.reg_C_30[32:0]
+top.u_slave.reg_D_34[32:0]
+top.u_slave.reg_E_38[32:0]
+top.u_slave.reg_F_3C[32:0]
+@200
+-
+@820
+top.u_slave.RD_STATE[55:0]
+@22
+top.u_slave.ARADDR[5:0]
+@28
+top.u_slave.ar_hs
+@22
+top.u_slave.ar_reg[5:0]
+@28
+top.u_slave.ARREADY
+top.u_slave.ARVALID
+top.u_slave.r_hs
+@200
+-
+@24
+top.u_slave.RDATA[31:0]
+top.u_slave.r_reg[31:0]
+@28
+top.u_slave.RREADY
+@29
+top.u_slave.RVALID
+@28
+top.u_slave.RRESP[1:0]
+[pattern_trace] 1
+[pattern_trace] 0

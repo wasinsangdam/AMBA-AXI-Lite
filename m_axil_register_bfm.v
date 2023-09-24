@@ -87,11 +87,11 @@ module m_axil_register_bfm # (
 
         repeat (10) @ (posedge ACLK);
         test(NUM_REG, 0);
-        repeat (10) @ (posedge ACLK);
+        repeat (100) @ (posedge ACLK);
         test(NUM_REG, 1);
-        repeat (10) @ (posedge ACLK);
+        repeat (100) @ (posedge ACLK);
         test(NUM_REG, 2);
-        repeat (10) @ (posedge ACLK);
+        repeat (100) @ (posedge ACLK);
         done = 1'b1;
         repeat (10) @ (posedge ACLK);
     end
@@ -294,18 +294,18 @@ module m_axil_register_bfm # (
             ARVALID = 1'b1;                         // Assert ARVALID
 
             /* Read Data channel (R) */
-            wait (ARVALID && ARREADY);              // Wait AR channel handshake
+            wait (ARVALID & ARREADY);               // Wait AR channel handshake
             @ (posedge ACLK);                       // After 1 cycle
             ARVALID = 1'b0;                         // Set ARVALID zero
 
             BREADY  = 1'b0;                         // Set BREADY zero
             repeat (random_C_R) @ (posedge ACLK);   // After random cycle(s)
             RREADY  = 1'b1;                         // Assert RREADY 
-            wait (RREADY && RVALID);                // Wait R channel handshake
+            wait (RREADY & RVALID);                 // Wait R channel handshake
+            data    = RDATA;                        // Return read data
+
             @ (posedge ACLK);                       // After 1 cycle
             RREADY  = 1'b0;                         // Set RREADY zero
-
-            data    = RDATA;                        // Return read data
         end
 
     endtask

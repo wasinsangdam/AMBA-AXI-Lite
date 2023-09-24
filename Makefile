@@ -22,7 +22,7 @@ SIM_TARGET = wave.vcd
 
 all : $(SIM_TARGET)
 
-view : 
+sim : 
 	$(VIEWER) $(SIM_TARGET) &
 
 $(EXE_TARGET) : $(SRCS)
