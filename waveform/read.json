@@ -1,0 +1,27 @@
+{ 
+    "signal" :
+
+    [
+        "AXI Transaction",
+        {},
+        { "name" : "ACLK", "wave" : "p....................."},
+        {},
+        { "name" : "R STATE  " ,      "wave" : "x6.6666..66.6666666.66", "data" : ["IDLE", "PREP", "DATA", "DONE", "IDLE", "PREP", "DATA", "DONE", "IDLE", "PREP", "DATA", "DONE", "IDLE", "PREP", "DATA", "DONE"]},
+        {},
+        [
+            "AR Channel",
+            { "name" : "ARADDR " ,      "wave" : "x2.x..2..x...2xxx2x...", "data" : ["0x00","0x04","0x08","0x0C"] },
+            { "name" : "ARVALID" ,      "wave" : "x010....10...10..10..."},
+            { "name" : "ARREADY" ,      "wave" : "x1.0..1..0...10..10..."}
+        ],
+        {},
+        [
+            "R Channel",
+            { "name" : "RDATA ",        "wave" : "x...2x....2.x..2x..2.x", "data" : ["1", "2", "3", "4"]},
+            { "name" : "RVALID",        "wave" : "x0..10....1.0..10..1.0"},
+            { "name" : "RREADY",        "wave" : "x0..10.....10..10...10"}
+        ]
+    ],
+
+    "config" : {"hscale" : 2}
+}

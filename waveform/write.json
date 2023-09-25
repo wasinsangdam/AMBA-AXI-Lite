@@ -1,0 +1,36 @@
+{ 
+    "signal" :
+
+    [
+        "AXI Transaction",
+        {},
+        { "name" : "ACLK", "wave" : "p..................."},
+        {},
+        { "name" : "AW STATE  "    ,  "wave" : "x6.6666..6666...6666", "data" : ["IDLE", "PREP", "WAIT", "DONE", "IDLE", "PREP", "WAIT", "DONE", "IDLE", "PREP", "WAIT", "DONE", "IDLE"]},
+
+        [
+            "AW Channel",
+            { "name" : "AWADDR "    ,  "wave" : "x2.x....2x...2..x...", "data" : ["0x00","0x04","0x08"] },
+            { "name" : "AWVALID"    ,  "wave" : "x010....10.....10..."},
+            { "name" : "AWREADY"    ,  "wave" : "x1.0..1..0..1...0..1"}
+        ],
+        {},
+        { "name" : "W STATE ",        "wave" : "x5..55555555.5555555", "data" : ["IDLE", "PREP", "WAIT", "RESP", "DONE", "IDLE", "PREP", "WAIT", "RESP", "DONE", "IDLE", "PREP", "WAIT", "RESP", "DONE", "IDLE"]},
+
+        [
+            "W Channel",
+            { "name" : "WDATA ",        "wave" : "x2..x...2x....2xx...", "data" : ["1", "2", "3"]},
+            { "name" : "WVALID",        "wave" : "x0.10...10....10...."},
+            { "name" : "WREADY",        "wave" : "x1..0...10....10...1"}
+        ],
+
+        [
+            "B Channel",
+            { "name" : "BRESP ",        "wave" : "x.....2x...2.x...2x.", "data" : ["OKAY", "OKAY", "OKAY"]},
+            { "name" : "BVALID",        "wave" : "x0....10...1.0...10."},
+            { "name" : "BREADY",        "wave" : "x0....10....10..1.0."}
+        ]
+    ],
+
+    "config" : {"hscale" : 2}
+}

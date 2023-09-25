@@ -88,7 +88,7 @@ module m_axil_register_bfm # (
         repeat (10) @ (posedge ACLK);
     end
 
-    
+
     //================//
     //  Test options  //
     //================//
@@ -123,7 +123,7 @@ module m_axil_register_bfm # (
                     wr_data = i/4 + 1;
                     axil_write(wr_addr, wr_data);
                     @ (posedge ACLK);
-                    $display("[INFO] Write address 0x%x, Write Data : %d", wr_addr, wr_data);
+                    $display("[INFO] Write address 0x%x, Write Data : %3d", wr_addr, wr_data);
                 end
 
                 $display("- Read");
@@ -131,7 +131,7 @@ module m_axil_register_bfm # (
                     rd_addr = j;
                     axil_read(rd_addr, rd_data);
                     @ (posedge ACLK);
-                    $display("[INFO] Read  address 0x%x, Read  Data : %d", rd_addr, rd_data);
+                    $display("[INFO] Read  address 0x%x, Read  Data : %3d", rd_addr, rd_data);
                 end
             end
             // [Option 1] Read and Write at the same time
@@ -144,7 +144,7 @@ module m_axil_register_bfm # (
                             wr_data = ($urandom % 10);
                             axil_write(wr_addr, wr_data);
                             @ (posedge ACLK);
-                            $display("[INFO] Write address 0x%x, Write Data : %d", wr_addr, wr_data);
+                            $display("[INFO] Write address 0x%x, Write Data : %3d", wr_addr, wr_data);
                         end
                     end
                     begin
@@ -152,7 +152,7 @@ module m_axil_register_bfm # (
                             rd_addr = j;
                             axil_read(rd_addr, rd_data);
                             @ (posedge ACLK);
-                            $display("[INFO] Read  address 0x%x, Read  Data : %d", rd_addr, rd_data);
+                            $display("[INFO] Read  address 0x%x, Read  Data : %3d", rd_addr, rd_data);
                         end
                     end
                 join
@@ -166,7 +166,7 @@ module m_axil_register_bfm # (
                     wr_data = ($urandom % 10);
                     axil_write(wr_addr, wr_data);
                     @ (posedge ACLK);
-                    $display("[INFO] Write address 0x%x, Write Data : %d", wr_addr, wr_data);
+                    $display("[INFO] Write address 0x%x, Write Data : %3d", wr_addr, wr_data);
                 end
 
                 $display("- Read");
@@ -174,7 +174,7 @@ module m_axil_register_bfm # (
                     rd_addr = j;
                     axil_read(rd_addr, rd_data);
                     @ (posedge ACLK);
-                    $display("[INFO] Read  address 0x%x, Read  Data : %d", rd_addr, rd_data);
+                    $display("[INFO] Read  address 0x%x, Read  Data : %3d", rd_addr, rd_data);
                 end
             end
             else begin
@@ -206,16 +206,16 @@ module m_axil_register_bfm # (
         begin
             
             /* Generate random value for AWVALID cycle */
-            // range : 1 ~ 10 cycle(s)
-            random_C_AW = ($urandom % 10) + 1;
+            // range : 0 ~ 9 cycle(s)
+            random_C_AW = ($urandom % 10);
 
             /* Generate random value for WVALID cycle */
-            // range : 1 ~ 10 cycle(s)
-            random_C_W = ($urandom % 10) + 1;
+            // range : 0 ~ 9 cycle(s)
+            random_C_W = ($urandom % 10);
 
             /* Generate random value for BREADY cycle */
-            // range : 1 ~ 10 cycle(s)
-            random_C_B = ($urandom % 10) + 1;
+            // range : 0 ~ 9 cycle(s)
+            random_C_B = ($urandom % 10);
 
             fork
                 /* Write Address channel (AW) */
@@ -232,24 +232,29 @@ module m_axil_register_bfm # (
 
                 /* Write Data channel (W) */
                 begin
-                    WDATA   = wr_data;                      // Set WDATA
-                    WSTRB   = 4'b1111;                      // Set STRB
-                    WVALID  = 1'b0;                         // Set WVALID zero
-                    repeat (random_C_W) @ (posedge ACLK);   // After random cycle(s)
-                    WVALID  = 1'b1;                         // Assert WVALID
+                    fork 
+                        begin
+                            WDATA   = wr_data;                      // Set WDATA
+                            WSTRB   = 4'b1111;                      // Set STRB
+                            WVALID  = 1'b0;                         // Set WVALID zero
+                            repeat (random_C_W) @ (posedge ACLK);   // After random cycle(s)
+                            WVALID  = 1'b1;                         // Assert WVALID
 
-                    wait (WREADY & WVALID);                 // Wait W channel handshake
-                    @ (posedge ACLK);                       // After one cycle
-                    WSTRB   = 4'b0000;                      // Set WSTRB zero 
-                    WVALID  = 1'b0;                         // Set WVALID zero
-
-                    BREADY = 1'b0;                          // Set BREADY zero
-                    repeat (random_C_B) @ (posedge ACLK);   // After random cycle(s)
-                    BREADY = 1'b1;                          // Assert BREADY
+                            wait (WREADY & WVALID);                 // Wait W channel handshake
+                            @ (posedge ACLK);                       // After one cycle
+                            WSTRB   = 4'b0000;                      // Set WSTRB zero 
+                            WVALID  = 1'b0;                         // Set WVALID zero
+                        end
+                        begin
+                            BREADY = 1'b0;                          // Set BREADY zero
+                            repeat (random_C_B) @ (posedge ACLK);   // After random cycle(s)
+                            BREADY = 1'b1;                          // Assert BREADY
                     
-                    wait (BVALID & BVALID);                 // Wait B channel handshake
-                    @ (posedge ACLK);                       // After one cycle
-                    BREADY = 1'b0;                          // Set BREADY zero
+                            wait (BVALID & BVALID);                 // Wait B channel handshake
+                            @ (posedge ACLK);                       // After one cycle
+                            BREADY = 1'b0;                          // Set BREADY zero
+                        end
+                    join
                 end 
             join
         end
@@ -273,32 +278,37 @@ module m_axil_register_bfm # (
         begin
             
             /* Generate random value for ARVALID cycle */
-            // range : 1 ~ 10 cycle(s)
-            random_C_AR = ($urandom % 10) + 1;
+            // range : 0 ~ 9 cycle(s)
+            random_C_AR = ($urandom % 10);
 
             /* Generate random value for RREADY cycle */
-            // range : 1 ~ 10 cycle(s)
-            random_C_R = ($urandom % 10) + 1;
+            // range : 0 ~ 9 cycle(s)
+            random_C_R = ($urandom % 10);
 
             /* Read Address channel (AR) */
-            ARADDR  = addr;                         // Set address
-            ARVALID = 1'b0;                         // Set ARVALID zero
-            repeat (random_C_AR) @ (posedge ACLK);  // After random cycle(s)
-            ARVALID = 1'b1;                         // Assert ARVALID
+            fork 
+                begin
+                    ARADDR  = addr;                         // Set address
+                    ARVALID = 1'b0;                         // Set ARVALID zero
+                    repeat (random_C_AR) @ (posedge ACLK);  // After random cycle(s)
+                    ARVALID = 1'b1;                         // Assert ARVALID
 
-            /* Read Data channel (R) */
-            wait (ARVALID & ARREADY);               // Wait AR channel handshake
-            @ (posedge ACLK);                       // After 1 cycle
-            ARVALID = 1'b0;                         // Set ARVALID zero
+                    /* Read Data channel (R) */
+                    wait (ARVALID & ARREADY);               // Wait AR channel handshake
+                    @ (posedge ACLK);                       // After 1 cycle
+                    ARVALID = 1'b0;                         // Set ARVALID zero
+                end
+                begin
+                    RREADY  = 1'b0;                         // Set RREADY zero
+                    repeat (random_C_R) @ (posedge ACLK);   // After random cycle(s)
+                    RREADY  = 1'b1;                         // Assert RREADY 
+                    wait (RREADY & RVALID);                 // Wait R channel handshake
+                    data    = RDATA;                        // Return read data
 
-            RREADY  = 1'b0;                         // Set RREADY zero
-            repeat (random_C_R) @ (posedge ACLK);   // After random cycle(s)
-            RREADY  = 1'b1;                         // Assert RREADY 
-            wait (RREADY & RVALID);                 // Wait R channel handshake
-            data    = RDATA;                        // Return read data
-
-            @ (posedge ACLK);                       // After 1 cycle
-            RREADY  = 1'b0;                         // Set RREADY zero
+                    @ (posedge ACLK);                       // After 1 cycle
+                    RREADY  = 1'b0;                         // Set RREADY zero
+                end
+            join
         end
 
     endtask
