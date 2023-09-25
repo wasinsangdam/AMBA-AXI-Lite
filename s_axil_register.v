@@ -143,7 +143,7 @@ module s_axil_register # (
     //==================//
     localparam  ST_W_IDLE = 3'd0,   // IDLE     state
                 ST_W_PREP = 3'd1,   // Prepare  state
-                ST_W_WAIT = 3'd2,
+                ST_W_WAIT = 3'd2,   // Wait     state
                 ST_W_RESP = 3'd3,   // Response state
                 ST_W_DONE = 3'd4;   // Done     state
 
@@ -266,7 +266,6 @@ module s_axil_register # (
     reg     [S_AXI_ADDR_WIDTH-1 : 0]    ar_reg;             // ARADDR Register
     wire                                ar_hs;              // AR channel handshake
     reg     [S_AXI_DATA_WIDTH-1 : 0]    r_reg;              // RDATA register
-    wire                                r_hs;               // R channel handshake
 
     /* R FSM */ 
     always @ (posedge ACLK) begin
@@ -292,7 +291,6 @@ module s_axil_register # (
     end
 
     assign ar_hs   = (ARREADY & ARVALID);       // AR handshake
-    assign r_hs    = (RREADY & RVALID);         // R handshake
     assign ARREADY = (r_state == ST_R_IDLE);    // When state is IDLE, assert ARREADY
     assign RVALID  = (r_state == ST_R_DATA);    // When state is DATA, assert RVALID
     assign RRESP   = 2'b00;                     // Fix RRESP "OKAY"
@@ -367,6 +365,7 @@ module s_axil_register # (
     always @ (*) begin
         case (r_state)
             ST_R_IDLE : RD_STATE = "RD_IDLE";
+            ST_R_PREP : RD_STATE = "RD_PREP";
             ST_R_DATA : RD_STATE = "RD_DATA";
             ST_R_DONE : RD_STATE = "RD_DONE";
             default   : RD_STATE = "XX_XXXX";

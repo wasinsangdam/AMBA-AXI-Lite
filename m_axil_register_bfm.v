@@ -88,7 +88,17 @@ module m_axil_register_bfm # (
         repeat (10) @ (posedge ACLK);
     end
 
-
+    
+    //================//
+    //  Test options  //
+    //================//
+    // 0 : Write after Read in order        
+    //   * Read Address : 0x00 ~ 0x3C, Write Address : 0x00 ~ 0x3C, Write Data : 1 ~ 16
+    // 1 : READ and Write at the same time  
+    //   * Read Address : 0x00 ~ 0x20, Write Address : 0x20 ~ 0x3C, Write Data : Random
+    // 2 : Write random value at random address, Read in order
+    //   * Read Address : 0x00 ~ 0x3C, Write Address : Random, Write Data : Random
+        
     task test;
         input   integer                     nwords;
         input   integer                     option;
@@ -101,16 +111,7 @@ module m_axil_register_bfm # (
         integer                             i, j;
 
         integer                             random_ADDR;
-        integer                             random_DATA;
-
-        /* Test options */ 
-        // 0 : Write after Read in order        
-        //   * Read Address : 0x00 ~ 0x3C, Write Address : 0x00 ~ 0x3C, Write Data : 1 ~ 16
-        // 1 : READ and Write at the same time  
-        //   * Read Address : 0x00 ~ 0x20, Write Address : 0x20 ~ 0x3C, Write Data : Random
-        // 2 : Write random value at random address, Read in order
-        //   * Read Address : 0x00 ~ 0x3C, Write Address : Random, Write Data : Random
-        
+        integer                             random_DATA;        
 
         begin
             // [Option 0] Write after Read in order

@@ -8,14 +8,8 @@ SIM		= vvp
 # Waveform viewer
 VIEWER 	= gtkwave
 
-
 # Sources
 SRCS = $(wildcard *.v)
-
-# # Dump file
-# VCDS = $(wildcard *.vcd)
-
-
 
 EXE_TARGET = top
 SIM_TARGET = wave.vcd
