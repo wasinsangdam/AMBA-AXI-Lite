@@ -294,7 +294,7 @@ module s_axil_register # (
     assign ARREADY = (r_state == ST_R_IDLE);    // When state is IDLE, assert ARREADY
     assign RVALID  = (r_state == ST_R_DATA);    // When state is DATA, assert RVALID
     assign RRESP   = 2'b00;                     // Fix RRESP "OKAY"
-    assign RDATA   = r_reg;                     
+    assign RDATA   = r_reg;                     // RDATA
 
     /* [ar_reg] */
     // When AR handshake occurs, ARADDR is stored in ar_reg
